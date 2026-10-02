@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	DefaultServerIP   = "0.0.0.0"
+	DefaultServerIP   = "172.31.83.115"
 	DefaultServerPort = "4536"
 	ServerType        = "udp4"
 	BufferSize        = 2048
