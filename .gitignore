@@ -1,0 +1,43 @@
+# Binaries and build outputs
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.zip
+
+# Dedicated logs and traces
+logs/
+ssl-key.log
+*.qlog
+*.sqlog
+
+# macOS stray files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows stray files
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Linux stray files
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# IDE & Editor caches
+.idea/
+.vscode/
+*.swp
+*.swo
