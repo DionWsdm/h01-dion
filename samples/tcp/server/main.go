@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compnet-socket-labs/samples/r1"
 	"fmt"
 	"io"
 	"log"
@@ -10,8 +11,8 @@ import (
 )
 
 var (
-	DefaultServerIP   = "127.0.0.1"
-	DefaultServerPort = "54321"
+	DefaultServerIP   = r1.DefaultServerPrivateIp
+	DefaultServerPort = r1.DefaultServerPort
 	ServerType        = "tcp4"
 	BufferSize        = 2048
 )

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"compnet-socket-labs/samples/r1"
 	"fmt"
 	"log"
 	"net"
@@ -9,8 +10,8 @@ import (
 )
 
 var (
-	DefaultServerIP   = "34.230.74.255"
-	DefaultServerPort = "4536"
+	DefaultServerIP   = r1.DefaultServerPublicIp
+	DefaultServerPort = r1.DefaultServerPort
 	ServerType        = "udp4"
 	BufferSize        = 2048
 )
