@@ -16,14 +16,16 @@ import (
 	"github.com/quic-go/quic-go/qlog"
 
 	"compnet-socket-labs/samples/quic/quicutil"
+	"compnet-socket-labs/samples/r4"
 )
 
 var (
+	TotalStream       = r4.TotalStream
 	DefaultServerIP   = "127.0.0.1"
 	DefaultServerPort = "54321"
 	ServerType        = "udp4"
 	BufferSize        = 2048
-	AppLayerProto     = "compnet-quic-sample"
+	AppLayerProto     = r4.AppLayerProto
 	LogDir            = "logs"
 	SSLKeyLogFileName = "ssl-key.log"
 )
@@ -123,43 +125,55 @@ func main() {
 func connectionHandler(connection *quic.Conn) {
 	fmt.Printf("[quic] Receive connection from %s\n", connection.RemoteAddr())
 
+	for streamCount := 0; streamCount < TotalStream; streamCount++ {
+		go handleStream(connection)
+	}
+}
+
+func handleStream(connection *quic.Conn) {
 	stream, err := connection.AcceptStream(context.Background())
 	if err != nil {
 		return
 	}
+	streamHandler(connection.RemoteAddr(), stream)
+}
 
-	go streamHandler(connection.RemoteAddr(), stream)
+func createReceiveBuffer(remoteAddr net.Addr, streamId quic.StreamID) []byte {
+	fmt.Printf("[quic] [Client: %s] [Stream %d] Creating receive buffer of size %d\n", remoteAddr, streamId, BufferSize)
+	receiveBuffer := make([]byte, BufferSize)
+	return receiveBuffer
 }
 
 func streamHandler(remoteAddr net.Addr, stream *quic.Stream) {
 	defer stream.Close()
 
-	fmt.Printf("[quic] [Client: %s] Creating receive buffer of size %d\n", remoteAddr, BufferSize)
-	receiveBuffer := make([]byte, BufferSize)
+	streamId := stream.StreamID()
+
+	receiveBuffer := createReceiveBuffer(remoteAddr, streamId)
 
 	receiveLength, err := stream.Read(receiveBuffer)
 	if err != nil {
 		if err != io.EOF {
-			log.Printf("[quic] [Client: %s] Read error: %v\n", remoteAddr, err)
+			log.Printf("[quic] [Client: %s] [Stream %d] Read error: %v\n", remoteAddr, streamId, err)
 		}
 		return
 	}
 
-	fmt.Printf("[quic] [Client: %s] Received %d bytes of message\n", remoteAddr, receiveLength)
+	fmt.Printf("[quic] [Client: %s] [Stream %d] Received %d bytes of message\n", remoteAddr, streamId, receiveLength)
 	message := string(receiveBuffer[:receiveLength])
 
-	fmt.Printf("[quic] [Client: %s] Message: %s\n", remoteAddr, message)
+	fmt.Printf("[quic] [Client: %s] [Stream %d] Message: %s\n", remoteAddr, streamId, message)
 
 	response, err := logic(message)
 	if err != nil {
-		log.Printf("[quic] [Client: %s] Logic error: %v\n", remoteAddr, err)
+		log.Printf("[quic] [Client: %s] [Stream %d] Logic error: %v\n", remoteAddr, streamId, err)
 		return
 	}
 
-	fmt.Printf("[quic] [Client: %s] Sending Response: %s\n", remoteAddr, response)
+	fmt.Printf("[quic] [Client: %s] [Stream %d] Sending Response: %s\n", remoteAddr, streamId, response)
 	_, err = stream.Write([]byte(response))
 	if err != nil {
-		log.Printf("[quic] [Client: %s] Write error: %v\n", remoteAddr, err)
+		log.Printf("[quic] [Client: %s] [Stream %d] Write error: %v\n", remoteAddr, streamId, err)
 		return
 	}
 }

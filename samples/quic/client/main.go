@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"compnet-socket-labs/samples/r4"
 	"context"
 	"crypto/tls"
 	"flag"
@@ -11,17 +12,20 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/qlog"
 )
 
 var (
+	Wg                sync.WaitGroup
+	TotalStream       = r4.TotalStream
 	DefaultServerIP   = "127.0.0.1"
 	DefaultServerPort = "54321"
 	ServerType        = "udp4"
 	BufferSize        = 2048
-	AppLayerProto     = "compnet-quic-sample"
+	AppLayerProto     = "jarkom-quic-sample-dion"
 	LogDir            = "logs"
 	SSLKeyLogFileName = "ssl-key.log"
 )
@@ -44,6 +48,36 @@ func ResolveALPN() string {
 		alpn = AppLayerProto
 	}
 	return alpn
+}
+
+func handleStream(connection *quic.Conn, message string, receiveBuffer []byte) {
+	defer Wg.Done()
+
+	stream2, err := connection.OpenStreamSync(context.Background())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	streamId := stream2.StreamID()
+
+	defer stream2.Close()
+
+	fmt.Printf("[quic] Opened bidirectional stream %d to %s\n", streamId, connection.RemoteAddr())
+
+	fmt.Printf("[quic] [Stream %d] Sending message '%s' to server\n", streamId, message)
+	_, err = stream2.Write([]byte(message))
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	receiveLength, err := stream2.Read(receiveBuffer)
+	if err != nil && err != io.EOF {
+		log.Fatalln(err)
+	}
+
+	fmt.Printf("[quic] [Stream %d] Received %d bytes of message from server\n", streamId, receiveLength)
+
+	response := string(receiveBuffer[:receiveLength])
+	fmt.Printf("[quic] [Stream %d] Response from server: %s\n", streamId, response)
 }
 
 func main() {
@@ -105,27 +139,10 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	stream, err := connection.OpenStreamSync(context.Background())
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer stream.Close()
-
-	fmt.Printf("[quic] Opened bidirectional stream %d to %s\n", stream.StreamID(), connection.RemoteAddr())
-
-	fmt.Printf("[quic] Sending message '%s' to server\n", message)
-	_, err = stream.Write([]byte(message))
-	if err != nil {
-		log.Fatalln(err)
+	for stream := 0; stream < TotalStream; stream++ {
+		Wg.Add(1)
+		go handleStream(connection, message, receiveBuffer)
 	}
 
-	receiveLength, err := stream.Read(receiveBuffer)
-	if err != nil && err != io.EOF {
-		log.Fatalln(err)
-	}
-
-	fmt.Printf("[quic] Received %d bytes of message from server\n", receiveLength)
-
-	response := string(receiveBuffer[:receiveLength])
-	fmt.Printf("[quic] Response from server: %s\n", response)
+	Wg.Wait()
 }
